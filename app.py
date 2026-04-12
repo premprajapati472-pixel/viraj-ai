@@ -1,24 +1,45 @@
-from flask import Flask, request, jsonify
 import os
+from flask import Flask, request, jsonify
 import google.generativeai as genai
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-genai.configure(api_key="AIzaSyA17VrxwlYGHnHvFpGfknnbxXw0Xt_-Uxo")
+# 1. Environment Variable se API Key lena
+# Render ki settings mein 'GEMINI_API_KEY' naam se key zaroor save karein
+API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=API_KEY)
 
-model = genai.GenerativeModel("gemini-pro")
+# 2. Gemini Model Setup
+model = genai.GenerativeModel('gemini-pro')
 
-@app.route("/")
-def home():
-    return "Viraj AI Running 🚀"
+@app.route('/')
+def index():
+    return "Viraj AI is Online and Ready!"
 
-@app.route("/chat", methods=["POST"])
+@app.route('/ask', methods=['POST'])
 def chat():
-    data = request.json
-    user_msg = data["message"]
+    try:
+        # User ka message lena
+        data = request.json
+        user_input = data.get("message")
+        
+        if not user_input:
+            return jsonify({"error": "Empty message"}), 400
 
-    response = model.generate_content(user_msg)
+        # AI se jawab mangna
+        response = model.generate_content(user_input)
+        
+        return jsonify({
+            "status": "success",
+            "reply": response.text
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({"reply": response.text})
-
-app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == '__main__':
+    # Render ke liye port aur host setup
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
