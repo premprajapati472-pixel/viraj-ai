@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
+import os
+import google.generativeai as genai
 
 app = Flask(__name__)
+
+genai.configure(api_key="AIzaSyA17VrxwlYGHnHvFpGfknnbxXw0Xt_-Uxo")
+
+model = genai.GenerativeModel("gemini-pro")
 
 @app.route("/")
 def home():
@@ -9,12 +15,10 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.json
-    msg = data["message"]
+    user_msg = data["message"]
 
-    reply = "Viraj AI: " + msg
+    response = model.generate_content(user_msg)
 
-    return jsonify({"reply": reply})
-
-import os
+    return jsonify({"reply": response.text})
 
 app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
