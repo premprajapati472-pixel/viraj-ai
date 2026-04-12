@@ -11,35 +11,14 @@ import google.generativeai as genai
 app = Flask(__name__)
 CORS(app)
 
-# Gemini Setup
-API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=API_KEY)
+# Gemini API Key yahan set hai
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-pro')
 
+# Ye rasta check karne ke liye hai ki server zinda hai ya nahi
 @app.route('/')
-def home():
-    return "Viraj AI is Online and Ready!"
-
-def get_market_data(symbol):
-    try:
-        df = yf.download(symbol, period="3mo", interval="1d")
-        if df.empty: return None
-        
-        df['EMA10'] = ta.ema(df['Close'], length=10)
-        df['RSI'] = ta.rsi(df['Close'], length=14)
-        
-        buf = io.BytesIO()
-        mpf.plot(df, type='candle', style='charles', 
-                 mav=(10, 21), volume=True, 
-                 title=f"\n{symbol} Analysis",
-                 savefig=buf)
-        
-        buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-        return {"df": df.iloc[-1], "chart": img_base64}
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+def index():
+    return "Viraj AI Server is LIVE!"
 
 @app.route('/ask', methods=['POST'])
 def chat():
@@ -47,18 +26,26 @@ def chat():
         data = request.json
         msg = data.get("message", "").upper()
         
+        # Agar stock symbol nahi hai toh normal chat
         if ".NS" not in msg and "^" not in msg:
             res = model.generate_content(msg)
             return jsonify({"reply": res.text, "chart": None})
 
-        info = get_market_data(msg)
-        if not info:
-            return jsonify({"reply": "Stock data nahi mila. Symbol check karein (e.g. SBIN.NS)", "chart": None})
+        # Stock data logic
+        df = yf.download(msg, period="3mo", interval="1d")
+        if df.empty:
+            return jsonify({"reply": "Symbol galat hai!", "chart": None})
             
-        last = info['df']
-        prompt = f"Stock: {msg}, Price: {last['Close']:.2f}, RSI: {last['RSI']:.2f}. Give buy/sell advice."
+        # Chart banana
+        buf = io.BytesIO()
+        mpf.plot(df, type='candle', style='charles', volume=True, savefig=buf)
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        
+        prompt = f"Stock: {msg}, Last Price: {df['Close'].iloc[-1]:.2f}. Advice?"
         res = model.generate_content(prompt)
-        return jsonify({"reply": res.text, "chart": info['chart']})
+        
+        return jsonify({"reply": res.text, "chart": img_base64})
     except Exception as e:
         return jsonify({"reply": f"Error: {str(e)}", "chart": None}), 500
 
