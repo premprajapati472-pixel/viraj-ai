@@ -1,0 +1,5 @@
+model/
+Diffchecker/
+*.npy
+*.exe
+*.asar

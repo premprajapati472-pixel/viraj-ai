@@ -1,0 +1,3 @@
+softaware ko check karne ke liye ki kam kar rha hai ki nhi sirf cmd ye command chlani 
+
+pythonw.exe
